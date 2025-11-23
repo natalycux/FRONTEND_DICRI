@@ -14,7 +14,12 @@ const userService = {
   // Crear nuevo usuario
   create: async (userData) => {
     try {
-      const response = await api.post('/users', userData)
+      // Agregar activo = 1 por defecto al crear usuario
+      const dataToSend = {
+        ...userData,
+        activo: 1
+      }
+      const response = await api.post('/users', dataToSend)
       return response.data
     } catch (error) {
       throw error.response?.data || { message: 'Error al crear usuario' }
@@ -28,6 +33,16 @@ const userService = {
       return response.data
     } catch (error) {
       throw error.response?.data || { message: 'Error al actualizar usuario' }
+    }
+  },
+
+  // Cambiar estado (activar/desactivar)
+  toggleEstado: async (id) => {
+    try {
+      const response = await api.put(`/users/${id}/toggle-estado`)
+      return response.data
+    } catch (error) {
+      throw error.response?.data || { message: 'Error al cambiar estado' }
     }
   }
 }

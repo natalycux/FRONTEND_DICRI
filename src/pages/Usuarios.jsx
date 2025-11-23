@@ -32,6 +32,7 @@ const Usuarios = () => {
   const loadUsuarios = async () => {
     try {
       const data = await userService.getAll()
+      console.log('Usuarios recibidos desde la API:', data)
       setUsuarios(data)
     } catch (error) {
       console.error('Error al cargar usuarios:', error)
@@ -113,6 +114,22 @@ const Usuarios = () => {
     }
   }
 
+  const handleToggleEstado = async (user) => {
+    const mensaje = user.activo ? 'desactivar' : 'activar'
+    
+    if (!window.confirm(`¿Está seguro de ${mensaje} al usuario ${user.usuario_login}?`)) {
+      return
+    }
+
+    try {
+      await userService.toggleEstado(user.id)
+      alert(`Usuario ${user.activo ? 'desactivado' : 'activado'} exitosamente`)
+      loadUsuarios()
+    } catch (error) {
+      alert('Error al cambiar estado: ' + error.message)
+    }
+  }
+
   const columns = [
     {
       header: 'Usuario',
@@ -140,9 +157,18 @@ const Usuarios = () => {
       header: 'Acciones',
       accessor: 'id',
       render: (value, row) => (
-        <Button size="small" variant="outline" onClick={() => handleOpenModal(row)}>
-          Editar
-        </Button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Button size="small" variant="outline" onClick={() => handleOpenModal(row)}>
+            Editar
+          </Button>
+          <Button 
+            size="small" 
+            variant={row.activo ? 'danger' : 'success'}
+            onClick={() => handleToggleEstado(row)}
+          >
+            {row.activo ? 'Desactivar' : 'Activar'}
+          </Button>
+        </div>
       )
     }
   ]
