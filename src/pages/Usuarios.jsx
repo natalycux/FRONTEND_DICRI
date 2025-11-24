@@ -32,7 +32,6 @@ const Usuarios = () => {
   const loadUsuarios = async () => {
     try {
       const data = await userService.getAll()
-      console.log('Usuarios recibidos desde la API:', data)
       setUsuarios(data)
     } catch (error) {
       console.error('Error al cargar usuarios:', error)
@@ -44,7 +43,11 @@ const Usuarios = () => {
   const loadRoles = async () => {
     try {
       const data = await catalogoService.getRoles()
-      setRoles(data.map(r => ({ value: r.id, label: r.nombre })))
+      const rolesFormateados = data.map(r => ({ 
+        value: r.id_rol || r.id, 
+        label: r.nombre_rol || r.nombre 
+      }))
+      setRoles(rolesFormateados)
     } catch (error) {
       console.error('Error al cargar roles:', error)
     }
@@ -90,43 +93,56 @@ const Usuarios = () => {
 
     try {
       const dataToSend = {
-        ...formData,
+        nombre: formData.nombre,
+        apellido: formData.apellido,
         id_rol: parseInt(formData.id_rol)
       }
 
-      // Si es edición y no se cambió la contraseña, no enviarla
-      if (editingUser && !dataToSend.password_plano) {
-        delete dataToSend.password_plano
+      // Si es creación, agregar usuario_login y password
+      if (!editingUser) {
+        dataToSend.usuario_login = formData.usuario_login
+        dataToSend.password_plano = formData.password_plano
+      }
+
+      // Si es edición y se cambió la contraseña, agregarla
+      if (editingUser && formData.password_plano) {
+        dataToSend.password_plano = formData.password_plano
       }
 
       if (editingUser) {
-        await userService.update(editingUser.id, dataToSend)
+        const userId = editingUser.id_usuario || editingUser.id
+        await userService.update(userId, dataToSend)
+        handleCloseModal()
+        await loadUsuarios()
         alert('Usuario actualizado exitosamente')
       } else {
         await userService.create(dataToSend)
+        handleCloseModal()
+        await loadUsuarios()
         alert('Usuario creado exitosamente')
       }
-
-      handleCloseModal()
-      loadUsuarios()
     } catch (error) {
-      alert('Error: ' + error.message)
+      console.error('Error al guardar usuario:', error)
+      alert('Error: ' + (error.message || 'Error al guardar usuario'))
     }
   }
 
   const handleToggleEstado = async (user) => {
-    const mensaje = user.activo ? 'desactivar' : 'activar'
+    console.log('Usuario a cambiar estado:', user)
+    const mensaje = user.estado ? 'desactivar' : 'activar'
     
     if (!window.confirm(`¿Está seguro de ${mensaje} al usuario ${user.usuario_login}?`)) {
       return
     }
 
     try {
-      await userService.toggleEstado(user.id)
-      alert(`Usuario ${user.activo ? 'desactivado' : 'activado'} exitosamente`)
-      loadUsuarios()
+      const response = await userService.toggleEstado(user.id_usuario || user.id)
+      console.log('Respuesta toggle estado:', response)
+      await loadUsuarios()
+      alert(`Usuario ${user.estado ? 'desactivado' : 'activado'} exitosamente`)
     } catch (error) {
-      alert('Error al cambiar estado: ' + error.message)
+      console.error('Error completo:', error)
+      alert('Error al cambiar estado: ' + (error.message || 'Error desconocido'))
     }
   }
 
@@ -142,11 +158,11 @@ const Usuarios = () => {
     },
     {
       header: 'Rol',
-      accessor: 'rol'
+      accessor: 'nombre_rol'
     },
     {
       header: 'Estado',
-      accessor: 'activo',
+      accessor: 'estado',
       render: (value) => (
         <span className={`badge ${value ? 'badge-aprobado' : 'badge-rechazado'}`}>
           {value ? 'Activo' : 'Inactivo'}
@@ -155,7 +171,7 @@ const Usuarios = () => {
     },
     {
       header: 'Acciones',
-      accessor: 'id',
+      accessor: 'id_usuario',
       render: (value, row) => (
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <Button size="small" variant="outline" onClick={() => handleOpenModal(row)}>
@@ -163,10 +179,10 @@ const Usuarios = () => {
           </Button>
           <Button 
             size="small" 
-            variant={row.activo ? 'danger' : 'success'}
+            variant={row.estado ? 'danger' : 'success'}
             onClick={() => handleToggleEstado(row)}
           >
-            {row.activo ? 'Desactivar' : 'Activar'}
+            {row.estado ? 'Desactivar' : 'Activar'}
           </Button>
         </div>
       )
